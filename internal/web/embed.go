@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-//go:embed dist/frontend/*
+//go:embed all:dist/frontend
 var frontendFS embed.FS
 
 // Handler returns an http.Handler that serves the embedded frontend.
