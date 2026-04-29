@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.22', '1.23']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Build binary
+        run: go build -o aegis ./cmd/apigateway
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: aegis-linux-amd64-go${{ matrix.go-version }}
+          path: aegis
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Build cross-platform binaries
+        run: |
+          GOOS=linux   GOARCH=amd64 go build -o dist/aegis-linux-amd64 ./cmd/apigateway
+          GOOS=linux   GOARCH=arm64 go build -o dist/aegis-linux-arm64 ./cmd/apigateway
+          GOOS=darwin  GOARCH=amd64 go build -o dist/aegis-darwin-amd64 ./cmd/apigateway
+          GOOS=darwin  GOARCH=arm64 go build -o dist/aegis-darwin-arm64 ./cmd/apigateway
+          GOOS=windows GOARCH=amd64 go build -o dist/aegis-windows-amd64.exe ./cmd/apigateway
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.sha }}
+          name: Build ${{ github.sha }}
+          files: dist/*
+          generate_release_notes: true

@@ -17,6 +17,7 @@ import (
 	"apigateway/internal/model"
 	"apigateway/internal/proxy"
 	"apigateway/internal/router"
+	"apigateway/internal/web"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -29,6 +30,7 @@ type Server struct {
 	handler   http.Handler
 	httpSrv   *http.Server
 	discovery *discovery.ServiceDiscovery
+	frontend  http.Handler
 	mu        sync.RWMutex
 	dynamicUpstreams map[string][]model.Upstream
 }
@@ -112,6 +114,7 @@ func NewServer(cfg *model.Config) *Server {
 	s := &Server{
 		cfg:              cfg,
 		router:           r,
+		frontend:         web.Handler(),
 		dynamicUpstreams: make(map[string][]model.Upstream),
 	}
 
@@ -147,6 +150,7 @@ func NewServer(cfg *model.Config) *Server {
 	// Build the main handler with middleware chain
 	s.handler = &gatewayHandler{
 		proxy:          proxyHandler,
+		frontend:       s.frontend,
 		matcher:        matcher,
 		jwtConfig:      cfg.JWT,
 		routeLimiters:  routeLimiters,
@@ -180,11 +184,12 @@ func NewServer(cfg *model.Config) *Server {
 
 // gatewayHandler applies middleware then delegates to the proxy.
 type gatewayHandler struct {
-	proxy         http.Handler
-	matcher       proxy.RouteMatcher
-	jwtConfig     model.JWTConfig
-	routeLimiters map[*model.Route]limiter.Limiter
-	routeBreakers map[*model.Route]*circuit.Breaker
+	proxy          http.Handler
+	frontend       http.Handler
+	matcher        proxy.RouteMatcher
+	jwtConfig      model.JWTConfig
+	routeLimiters  map[*model.Route]limiter.Limiter
+	routeBreakers  map[*model.Route]*circuit.Breaker
 }
 
 func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -206,10 +211,10 @@ func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jwtMW := middleware.JWTAuth(h.jwtConfig)
 	c := gwcontext.New(w, r)
 	c.SetHandlers([]gwcontext.HandlerFunc{jwtMW, func(c *gwcontext.GatewayContext) {
-		// 2. Match route
+		// 2. Match route; if no route matches, serve frontend SPA
 		route, params, ok := h.matcher(r.URL.Path, r.Method)
 		if !ok {
-			http.NotFound(w, r)
+			h.frontend.ServeHTTP(w, r)
 			return
 		}
 		c.Params = params

@@ -9,6 +9,10 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
+  build: {
+    outDir: resolve(__dirname, '../internal/web/dist/frontend'),
+    emptyOutDir: true
+  },
   server: {
     port: 3000,
     proxy: {

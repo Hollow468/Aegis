@@ -4,7 +4,8 @@
 *.dll
 *.so
 *.dylib
-apigateway
+aegis
+aegis-*
 
 # Test binary
 *.test
@@ -31,3 +32,10 @@ logs/
 
 # Benchmark artifacts
 /tmp/
+
+# Embedded frontend build output (keep .gitkeep)
+internal/web/dist/frontend/*
+!internal/web/dist/frontend/.gitkeep
+
+# Docker
+dist/
