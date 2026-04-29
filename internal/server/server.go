@@ -12,6 +12,7 @@ import (
 	"apigateway/internal/discovery"
 	"apigateway/internal/limiter"
 	"apigateway/internal/logger"
+	"apigateway/internal/metrics"
 	"apigateway/internal/middleware"
 	"apigateway/internal/model"
 	"apigateway/internal/proxy"
@@ -187,6 +188,20 @@ type gatewayHandler struct {
 }
 
 func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Expose /metrics without auth
+	if r.URL.Path == "/metrics" {
+		metrics.Handler().ServeHTTP(w, r)
+		return
+	}
+
+	// Health check without auth
+	if r.URL.Path == "/health" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"status":"ok"}`)
+		return
+	}
+
 	// 1. Global JWT auth middleware
 	jwtMW := middleware.JWTAuth(h.jwtConfig)
 	c := gwcontext.New(w, r)

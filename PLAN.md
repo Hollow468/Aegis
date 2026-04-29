@@ -60,11 +60,11 @@ Phase 3: 流量治理与安全防护 (Week 4)
 Phase 4: 极客管理面板与可观测性 (Week 5)
 目标：提升项目品味，实现对网关的监控与动态干预。
 
-[ ] 引入 prometheus/client_golang，暴露网关 QPS、延迟统计、HTTP 状态码等 Metrics 接口。
+[x] 引入 prometheus/client_golang，暴露网关 QPS、延迟统计、HTTP 状态码等 Metrics 接口。
 
-[ ] 开发一个基于 charmbracelet/bubbletea 的 TUI (终端用户界面) Dashboard，在终端中实时监控网关的吞吐量和节点存活状态。
+[x] 开发一个基于 charmbracelet/bubbletea 的 TUI (终端用户界面) Dashboard，在终端中实时监控网关的吞吐量和节点存活状态。
 
-[ ] 支持通过 TUI 或 CLI 动态修改路由规则，实时同步到 etcd，实现网关规则零停机（Zero-Downtime）热更新。
+[x] 支持通过 TUI 或 CLI 动态修改路由规则，实时同步到 etcd，实现网关规则零停机（Zero-Downtime）热更新。
 
 Phase 5: 云原生部署与文档沉淀 (Week 6)
 目标：准备面试展示素材，达到 Production Ready 级别。
