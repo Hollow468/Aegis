@@ -207,14 +207,21 @@ func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Serve frontend static assets without auth
+	// If no backend route matches, serve the embedded frontend SPA
+	if !h.hasBackendRoute(r.URL.Path, r.Method) {
+		h.frontend.ServeHTTP(w, r)
+		return
+	}
+
 	// 1. Global JWT auth middleware
 	jwtMW := middleware.JWTAuth(h.jwtConfig)
 	c := gwcontext.New(w, r)
 	c.SetHandlers([]gwcontext.HandlerFunc{jwtMW, func(c *gwcontext.GatewayContext) {
-		// 2. Match route; if no route matches, serve frontend SPA
+		// 2. Match route
 		route, params, ok := h.matcher(r.URL.Path, r.Method)
 		if !ok {
-			h.frontend.ServeHTTP(w, r)
+			http.NotFound(w, r)
 			return
 		}
 		c.Params = params
@@ -242,8 +249,6 @@ func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			// Record result after proxy
 			defer func() {
-				// We can't easily get the status code here, so record success
-				// The circuit breaker middleware approach would be better for this
 				cb.Record(true)
 			}()
 		}
@@ -252,6 +257,12 @@ func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.proxy.ServeHTTP(w, r)
 	}})
 	c.Next()
+}
+
+// hasBackendRoute checks if the path matches any configured backend route.
+func (h *gatewayHandler) hasBackendRoute(path, method string) bool {
+	_, _, ok := h.matcher(path, method)
+	return ok
 }
 
 // ListenAndServe starts the HTTP server.
