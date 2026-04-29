@@ -10,6 +10,7 @@ import (
 	"apigateway/internal/circuit"
 	gwcontext "apigateway/internal/context"
 	"apigateway/internal/discovery"
+	"apigateway/internal/handler"
 	"apigateway/internal/limiter"
 	"apigateway/internal/logger"
 	"apigateway/internal/metrics"
@@ -151,6 +152,7 @@ func NewServer(cfg *model.Config) *Server {
 	s.handler = &gatewayHandler{
 		proxy:          proxyHandler,
 		frontend:       s.frontend,
+		loginHandler:   handler.NewLoginHandler(cfg.JWT),
 		matcher:        matcher,
 		jwtConfig:      cfg.JWT,
 		routeLimiters:  routeLimiters,
@@ -186,6 +188,7 @@ func NewServer(cfg *model.Config) *Server {
 type gatewayHandler struct {
 	proxy          http.Handler
 	frontend       http.Handler
+	loginHandler   http.Handler
 	matcher        proxy.RouteMatcher
 	jwtConfig      model.JWTConfig
 	routeLimiters  map[*model.Route]limiter.Limiter
@@ -204,6 +207,12 @@ func (h *gatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status":"ok"}`)
+		return
+	}
+
+	// Login endpoint without auth
+	if r.URL.Path == "/api/auth/login" {
+		h.loginHandler.ServeHTTP(w, r)
 		return
 	}
 

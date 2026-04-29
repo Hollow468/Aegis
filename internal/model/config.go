@@ -33,6 +33,8 @@ type JWTConfig struct {
 	Secret     string   `mapstructure:"secret"`
 	Expiration int      `mapstructure:"expiration"` // seconds
 	WhiteList  []string `mapstructure:"white_list"`  // paths that skip auth
+	AdminUser  string   `mapstructure:"admin_user"`
+	AdminPass  string   `mapstructure:"admin_pass"`
 }
 
 type RedisConfig struct {

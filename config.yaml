@@ -23,10 +23,12 @@ etcd:
 
 jwt:
   secret: "your-secret-key-change-in-production"
-  expiration: 3600
+  expiration: 86400
   white_list:
     - "/health"
     - "/api/public/*"
+  admin_user: "admin"
+  admin_pass: "admin123"
 
 redis:
   addr: "localhost:6379"
