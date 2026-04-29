@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const username = ref('')
@@ -11,14 +13,14 @@ const password = ref('')
 
 async function handleLogin() {
   if (!username.value || !password.value) {
-    ElMessage.warning('Please enter username and password')
+    ElMessage.warning(t('login.error.missingFields'))
     return
   }
   try {
     await authStore.login(username.value, password.value)
     router.push('/')
   } catch {
-    ElMessage.error('Login failed')
+    ElMessage.error(t('login.error.failed'))
   }
 }
 </script>
@@ -26,19 +28,19 @@ async function handleLogin() {
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1 class="logo">AEGIS</h1>
-      <p class="subtitle">API Gateway Management</p>
+      <h1 class="logo">{{ t('login.brand') }}</h1>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
       <form @submit.prevent="handleLogin">
         <div class="form-item">
-          <label>Username</label>
-          <input v-model="username" type="text" placeholder="admin" />
+          <label>{{ t('login.username') }}</label>
+          <input v-model="username" type="text" :placeholder="t('login.usernamePlaceholder')" />
         </div>
         <div class="form-item">
-          <label>Password</label>
-          <input v-model="password" type="password" placeholder="password" />
+          <label>{{ t('login.password') }}</label>
+          <input v-model="password" type="password" :placeholder="t('login.passwordPlaceholder')" />
         </div>
         <button type="submit" class="btn-login" :disabled="authStore.loading">
-          {{ authStore.loading ? 'Signing in...' : 'Sign In' }}
+          {{ authStore.loading ? t('login.signingIn') : t('login.signIn') }}
         </button>
       </form>
     </div>

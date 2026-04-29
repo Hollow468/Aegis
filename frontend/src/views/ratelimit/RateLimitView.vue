@@ -2,9 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { useRateLimitStore } from '../../stores/ratelimit'
 import { useConfirm } from '../../composables/useConfirm'
+import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '../../components/common/ConfirmDialog.vue'
 import { ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const store = useRateLimitStore()
 const { visible, title, message, confirm, handleConfirm, handleCancel } = useConfirm()
 
@@ -14,28 +16,28 @@ const form = ref({ route: '', strategy: 'token_bucket', rate: 100, burst: 200 })
 onMounted(() => { store.fetchLimits() })
 
 async function handleDelete(route: string) {
-  const ok = await confirm('Delete Rule', `Remove rate limit for "${route}"?`)
+  const ok = await confirm(t('ratelimit.confirm.title'), t('ratelimit.confirm.message', { route }))
   if (!ok) return
   try {
     await store.removeLimit(route)
-    ElMessage.success('Rule deleted')
+    ElMessage.success(t('ratelimit.success.deleted'))
   } catch {
-    ElMessage.error('Failed to delete rule')
+    ElMessage.error(t('ratelimit.error.deleteFailed'))
   }
 }
 
 async function handleAdd() {
   if (!form.value.route) {
-    ElMessage.warning('Route is required')
+    ElMessage.warning(t('ratelimit.error.routeRequired'))
     return
   }
   try {
     await store.addLimit(form.value)
     showAdd.value = false
     form.value = { route: '', strategy: 'token_bucket', rate: 100, burst: 200 }
-    ElMessage.success('Rule added')
+    ElMessage.success(t('ratelimit.success.added'))
   } catch {
-    ElMessage.error('Failed to add rule')
+    ElMessage.error(t('ratelimit.error.addFailed'))
   }
 }
 </script>
@@ -44,14 +46,20 @@ async function handleAdd() {
   <div class="ratelimit-page">
     <div class="panel">
       <div class="panel-header">
-        <h3>Rate Limiting Rules</h3>
-        <button class="btn btn-primary" @click="showAdd = true">+ Add Rule</button>
+        <h3>{{ t('ratelimit.header') }}</h3>
+        <button class="btn btn-primary" @click="showAdd = true">{{ t('ratelimit.addRule') }}</button>
       </div>
       <div class="panel-body">
-        <div v-if="store.loading" class="loading">Loading...</div>
+        <div v-if="store.loading" class="loading">{{ t('common.loading') }}</div>
         <table v-else>
           <thead>
-            <tr><th>Route</th><th>Strategy</th><th>Rate</th><th>Burst</th><th>Actions</th></tr>
+            <tr>
+              <th>{{ t('common.route') }}</th>
+              <th>{{ t('ratelimit.col.strategy') }}</th>
+              <th>{{ t('ratelimit.col.rate') }}</th>
+              <th>{{ t('ratelimit.col.burst') }}</th>
+              <th>{{ t('common.actions') }}</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="l in store.limits" :key="l.route">
@@ -59,41 +67,41 @@ async function handleAdd() {
               <td>{{ l.strategy }}</td>
               <td>{{ l.rate }}/s</td>
               <td>{{ l.burst }}</td>
-              <td><button class="btn btn-danger btn-sm" @click="handleDelete(l.route)">Delete</button></td>
+              <td><button class="btn btn-danger btn-sm" @click="handleDelete(l.route)">{{ t('common.delete') }}</button></td>
             </tr>
             <tr v-if="store.limits.length === 0">
-              <td colspan="5" class="empty">No rate limit rules configured</td>
+              <td colspan="5" class="empty">{{ t('ratelimit.empty') }}</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <el-dialog v-model="showAdd" title="Add Rate Limit Rule" width="420px">
+    <el-dialog v-model="showAdd" :title="t('ratelimit.dialog.title')" width="420px">
       <div class="form-grid">
         <div class="form-item">
-          <label>Route</label>
-          <el-input v-model="form.route" placeholder="/api/users" />
+          <label>{{ t('ratelimit.form.route') }}</label>
+          <el-input v-model="form.route" :placeholder="t('ratelimit.form.routePlaceholder')" />
         </div>
         <div class="form-item">
-          <label>Strategy</label>
+          <label>{{ t('ratelimit.form.strategy') }}</label>
           <el-select v-model="form.strategy">
-            <el-option label="Token Bucket" value="token_bucket" />
-            <el-option label="Redis Sliding Window" value="redis" />
+            <el-option :label="t('ratelimit.form.strategyOptions.tokenBucket')" value="token_bucket" />
+            <el-option :label="t('ratelimit.form.strategyOptions.redis')" value="redis" />
           </el-select>
         </div>
         <div class="form-item">
-          <label>Rate (req/s)</label>
+          <label>{{ t('ratelimit.form.rate') }}</label>
           <el-input-number v-model="form.rate" :min="1" />
         </div>
         <div class="form-item">
-          <label>Burst</label>
+          <label>{{ t('ratelimit.form.burst') }}</label>
           <el-input-number v-model="form.burst" :min="1" />
         </div>
       </div>
       <template #footer>
-        <el-button @click="showAdd = false">Cancel</el-button>
-        <el-button type="primary" :disabled="store.loading" @click="handleAdd">Add</el-button>
+        <el-button @click="showAdd = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :disabled="store.loading" @click="handleAdd">{{ t('common.add') }}</el-button>
       </template>
     </el-dialog>
 

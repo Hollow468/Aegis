@@ -2,23 +2,25 @@
 import { onMounted } from 'vue'
 import { useRoutesStore } from '../../stores/routes'
 import { useConfirm } from '../../composables/useConfirm'
+import { useI18n } from 'vue-i18n'
 import StateTag from '../../components/common/StateTag.vue'
 import ConfirmDialog from '../../components/common/ConfirmDialog.vue'
 import { ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const routesStore = useRoutesStore()
 const { visible, title, message, confirm, handleConfirm, handleCancel } = useConfirm()
 
 onMounted(() => { routesStore.fetchRoutes() })
 
 async function handleDelete(path: string) {
-  const ok = await confirm('Delete Route', `Are you sure you want to delete route "${path}"?`)
+  const ok = await confirm(t('routes.confirm.title'), t('routes.confirm.message', { path }))
   if (!ok) return
   try {
     await routesStore.removeRoute(path)
-    ElMessage.success('Route deleted')
+    ElMessage.success(t('routes.success.deleted'))
   } catch {
-    ElMessage.error('Failed to delete route')
+    ElMessage.error(t('routes.error.deleteFailed'))
   }
 }
 </script>
@@ -27,14 +29,22 @@ async function handleDelete(path: string) {
   <div class="routes-page">
     <div class="panel">
       <div class="panel-header">
-        <h3>Route Configuration</h3>
-        <button class="btn btn-primary">+ Add Route</button>
+        <h3>{{ t('routes.header') }}</h3>
+        <button class="btn btn-primary">{{ t('routes.addRoute') }}</button>
       </div>
       <div class="panel-body">
-        <div v-if="routesStore.loading" class="loading">Loading...</div>
+        <div v-if="routesStore.loading" class="loading">{{ t('common.loading') }}</div>
         <table v-else>
           <thead>
-            <tr><th>Path</th><th>Method</th><th>Match Type</th><th>Balancer</th><th>Rate Limit</th><th>Upstreams</th><th>Actions</th></tr>
+            <tr>
+              <th>{{ t('routes.col.path') }}</th>
+              <th>{{ t('routes.col.method') }}</th>
+              <th>{{ t('routes.col.matchType') }}</th>
+              <th>{{ t('routes.col.balancer') }}</th>
+              <th>{{ t('routes.col.rateLimit') }}</th>
+              <th>{{ t('routes.col.upstreams') }}</th>
+              <th>{{ t('common.actions') }}</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="r in routesStore.routes" :key="r.path">
@@ -45,12 +55,12 @@ async function handleDelete(path: string) {
               <td>{{ r.rate_limit ? `${r.rate_limit.limit}/s` : '-' }}</td>
               <td>{{ r.upstreams?.length ?? 0 }}</td>
               <td>
-                <button class="btn btn-secondary btn-sm">Edit</button>
-                <button class="btn btn-danger btn-sm" @click="handleDelete(r.path)">Delete</button>
+                <button class="btn btn-secondary btn-sm">{{ t('common.edit') }}</button>
+                <button class="btn btn-danger btn-sm" @click="handleDelete(r.path)">{{ t('common.delete') }}</button>
               </td>
             </tr>
             <tr v-if="routesStore.routes.length === 0">
-              <td colspan="7" class="empty">No routes configured</td>
+              <td colspan="7" class="empty">{{ t('routes.empty') }}</td>
             </tr>
           </tbody>
         </table>

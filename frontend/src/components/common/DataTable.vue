@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps<{
   loading?: boolean
   emptyText?: string
@@ -9,7 +13,7 @@ defineProps<{
   <div class="data-table-wrapper">
     <div v-if="loading" class="table-loading">
       <el-icon class="is-loading" :size="24"><Loading /></el-icon>
-      <span>Loading...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
     <table v-else class="data-table">
       <thead>
@@ -21,7 +25,7 @@ defineProps<{
     </table>
     <div v-if="!loading" class="table-empty">
       <slot name="empty">
-        <span class="empty-text">{{ emptyText || 'No data' }}</span>
+        <span class="empty-text">{{ emptyText || t('common.noData') }}</span>
       </slot>
     </div>
   </div>
@@ -43,12 +47,10 @@ import { Loading } from '@element-plus/icons-vue'
   color: var(--text-secondary); font-weight: 600; font-size: 11px;
   text-transform: uppercase; background: var(--bg-tertiary);
 }
-
 .table-loading {
   display: flex; align-items: center; justify-content: center;
   gap: 8px; padding: 40px; color: var(--text-secondary);
 }
-
 .table-empty:empty { display: none; }
 .empty-text { color: var(--text-muted); font-size: 13px; }
 </style>
