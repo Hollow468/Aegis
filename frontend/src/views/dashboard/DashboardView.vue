@@ -1,50 +1,59 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useMetricsStore } from '../../stores/metrics'
+import { useUpstreamsStore } from '../../stores/upstreams'
+import { usePolling } from '../../composables/usePolling'
+import MetricCard from '../../components/common/MetricCard.vue'
+import StatusDot from '../../components/common/StatusDot.vue'
 
-const metrics = ref([
-  { label: 'Requests / sec', value: '1,247', trend: '▲ 12.3%', trendType: 'up' },
-  { label: 'Avg Latency', value: '12.4ms', trend: '▼ 3.1%', trendType: 'down' },
-  { label: 'Total Requests', value: '1.2M', trend: '▲ 8.7%', trendType: 'up' },
-  { label: 'In Flight', value: '23', trend: 'stable', trendType: 'neutral' }
-])
+const metricsStore = useMetricsStore()
+const upstreamsStore = useUpstreamsStore()
 
-const upstreams = ref([
-  { address: 'http://localhost:9001', healthy: true, latency: '8.5ms', weight: 100 },
-  { address: 'http://localhost:9002', healthy: true, latency: '12.1ms', weight: 100 },
-  { address: 'http://localhost:9003', healthy: false, latency: '-', weight: 100 }
-])
+async function refresh() {
+  await Promise.allSettled([
+    metricsStore.fetchSummary(),
+    upstreamsStore.fetchUpstreams()
+  ])
+}
+
+usePolling(refresh, 5000)
+
+const metricCards = [
+  { key: 'qps', label: 'Requests / sec', format: (v: number) => v.toLocaleString() },
+  { key: 'avg_latency', label: 'Avg Latency', format: (v: number) => `${v.toFixed(1)}ms` },
+  { key: 'total_requests', label: 'Total Requests', format: (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v.toLocaleString() },
+  { key: 'in_flight', label: 'In Flight', format: (v: number) => String(v) }
+]
 </script>
 
 <template>
   <div class="dashboard">
     <div class="metrics-grid">
-      <div v-for="m in metrics" :key="m.label" class="metric-card">
-        <div class="label">{{ m.label }}</div>
-        <div class="value">{{ m.value }}</div>
-        <div class="trend" :class="m.trendType">{{ m.trend }}</div>
-      </div>
+      <MetricCard
+        v-for="m in metricCards"
+        :key="m.key"
+        :label="m.label"
+        :value="m.format((metricsStore.summary as any)[m.key] ?? 0)"
+      />
     </div>
 
     <div class="panel">
-      <div class="panel-header">
-        <h3>Upstream Health</h3>
-      </div>
+      <div class="panel-header"><h3>Upstream Health</h3></div>
       <div class="panel-body">
-        <table>
+        <div v-if="upstreamsStore.loading" class="loading">Loading...</div>
+        <table v-else>
           <thead>
-            <tr><th>Address</th><th>Status</th><th>Latency</th><th>Weight</th></tr>
+            <tr><th>Address</th><th>Service</th><th>Status</th><th>Latency</th><th>Weight</th></tr>
           </thead>
           <tbody>
-            <tr v-for="u in upstreams" :key="u.address">
+            <tr v-for="u in upstreamsStore.upstreams" :key="u.address">
               <td><code>{{ u.address }}</code></td>
-              <td>
-                <span class="status-indicator">
-                  <span class="dot" :class="u.healthy ? 'dot-green' : 'dot-red'"></span>
-                  {{ u.healthy ? 'Healthy' : 'Down' }}
-                </span>
-              </td>
-              <td>{{ u.latency }}</td>
+              <td>{{ u.service }}</td>
+              <td><StatusDot :status="u.healthy ? 'healthy' : 'down'" :label="u.healthy ? 'Healthy' : 'Down'" /></td>
+              <td>{{ u.latency ? `${u.latency}ms` : '-' }}</td>
               <td>{{ u.weight }}</td>
+            </tr>
+            <tr v-if="upstreamsStore.upstreams.length === 0">
+              <td colspan="5" class="empty">No upstreams registered</td>
             </tr>
           </tbody>
         </table>
@@ -55,55 +64,16 @@ const upstreams = ref([
 
 <style scoped>
 .metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px; margin-bottom: 24px;
 }
-
-.metric-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-}
-
-.metric-card .label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.metric-card .value { font-size: 28px; font-weight: 700; }
-
-.metric-card .trend { font-size: 12px; }
-.trend.up { color: var(--success); }
-.trend.down { color: var(--danger); }
-.trend.neutral { color: var(--text-secondary); }
-
-.panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.panel-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
+.panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); }
+.panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .panel-header h3 { font-size: 14px; font-weight: 600; }
 .panel-body { padding: 20px; }
-
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 12px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
 th { color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase; }
-
-.status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot-green { background: var(--success); animation: pulse 2s infinite; }
-.dot-red { background: var(--danger); animation: pulse 1s infinite; }
-
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.loading { padding: 20px; text-align: center; color: var(--text-secondary); }
+.empty { text-align: center; color: var(--text-muted); padding: 24px; }
 </style>

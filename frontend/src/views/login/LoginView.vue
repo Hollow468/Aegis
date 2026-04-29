@@ -1,28 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const username = ref('')
 const password = ref('')
-const loading = ref(false)
-const error = ref('')
 
 async function handleLogin() {
   if (!username.value || !password.value) {
-    error.value = 'Please enter username and password'
+    ElMessage.warning('Please enter username and password')
     return
   }
-  loading.value = true
-  error.value = ''
   try {
-    // TODO: integrate with real auth API
-    localStorage.setItem('token', 'mock-token')
+    await authStore.login(username.value, password.value)
     router.push('/')
   } catch {
-    error.value = 'Login failed'
-  } finally {
-    loading.value = false
+    ElMessage.error('Login failed')
   }
 }
 </script>
@@ -41,9 +37,8 @@ async function handleLogin() {
           <label>Password</label>
           <input v-model="password" type="password" placeholder="password" />
         </div>
-        <div v-if="error" class="error">{{ error }}</div>
-        <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Signing in...' : 'Sign In' }}
+        <button type="submit" class="btn-login" :disabled="authStore.loading">
+          {{ authStore.loading ? 'Signing in...' : 'Sign In' }}
         </button>
       </form>
     </div>
@@ -68,8 +63,9 @@ form { display: flex; flex-direction: column; gap: 16px; }
   width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border);
   background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px; box-sizing: border-box;
 }
-.error { color: var(--danger); font-size: 13px; }
-.btn { padding: 12px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-login {
+  padding: 12px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600;
+  cursor: pointer; width: 100%; background: var(--accent); color: #fff; margin-top: 8px;
+}
+.btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

@@ -5,6 +5,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('../layouts/MainLayout.vue'),
     redirect: '/dashboard',
+    meta: { requiresAuth: true },
     children: [
       {
         path: 'dashboard',
@@ -63,13 +64,11 @@ const router = createRouter({
   routes
 })
 
-// Auth guard
 router.beforeEach((to, _from, next) => {
   document.title = `${to.meta.title || 'Aegis'} - Aegis Gateway`
   const token = localStorage.getItem('token')
-  if (to.name !== 'Login' && !token) {
-    // Allow access without auth for now (development)
-    next()
+  if (to.meta.requiresAuth && !token) {
+    next({ name: 'Login' })
   } else {
     next()
   }
