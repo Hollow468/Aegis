@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aegis API Gateway - Dashboard</title>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #1a1d27;
+  --bg-tertiary: #242736;
+  --bg-hover: #2a2d3e;
+  --border: #2e3148;
+  --text-primary: #e4e6f0;
+  --text-secondary: #8b8fa3;
+  --text-muted: #5a5e72;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --radius: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-logo .logo-icon {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sidebar-logo h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sidebar-logo span {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 0;
+  overflow-y: auto;
+}
+
+.nav-section {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  font-size: 14px;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: rgba(59,130,246,0.1);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  height: var(--header-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 99;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-left h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.running {
+  background: rgba(34,197,94,0.15);
+  color: var(--success);
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.header-stat {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.header-stat strong {
+  color: var(--text-primary);
+}
+
+/* Main Content */
+.main {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  padding: 24px;
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+}
+
+/* Page */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.metric-card .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.metric-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.metric-card .trend {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metric-card .trend.up { color: var(--success); }
+.metric-card .trend.down { color: var(--danger); }
+
+/* Panel */
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.panel-body {
+  padding: 20px;
+}
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-tertiary);
+}
+
+tr:hover td { background: var(--bg-hover); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tag-get { background: rgba(34,197,94,0.15); color: var(--success); }
+.tag-post { background: rgba(59,130,246,0.15); color: var(--accent); }
+.tag-put { background: rgba(245,158,11,0.15); color: var(--warning); }
+.tag-delete { background: rgba(239,68,68,0.15); color: var(--danger); }
+.tag-exact { background: rgba(59,130,246,0.1); color: var(--accent); }
+.tag-prefix { background: rgba(6,182,212,0.1); color: var(--info); }
+.tag-regex { background: rgba(168,85,247,0.1); color: #a855f7; }
+
+/* Status indicators */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-indicator .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+.dot-green { background: var(--success); animation: pulse 2s infinite; }
+.dot-red { background: var(--danger); animation: pulse 1s infinite; }
+.dot-yellow { background: var(--warning); animation: pulse 1.5s infinite; }
+.dot-gray { background: var(--text-muted); }
+
+/* Circuit breaker visualization */
+.cb-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cb-closed { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+.cb-open { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+.cb-half-open { background: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { background: var(--bg-hover); }
+
+.btn-danger {
+  background: rgba(239,68,68,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* Charts (CSS-based) */
+.chart-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+  padding: 0 4px;
+}
+
+.chart-bar {
+  flex: 1;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+  min-width: 8px;
+  transition: height 0.3s;
+  opacity: 0.8;
+}
+
+.chart-bar:hover { opacity: 1; }
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 4px 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Donut chart */
+.donut-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+}
+
+.donut {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.donut-center .value { font-size: 20px; font-weight: 700; }
+.donut-center .label { font-size: 10px; color: var(--text-secondary); }
+
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 480px;
+  max-width: 90vw;
+  box-shadow: var(--shadow);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 { font-size: 16px; font-weight: 600; }
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modal-close:hover { color: var(--text-primary); }
+
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-group input,
+.form-group select {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--accent);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow);
+  min-width: 280px;
+}
+
+.toast-success { background: rgba(34,197,94,0.9); color: #fff; }
+.toast-error { background: rgba(239,68,68,0.9); color: #fff; }
+.toast-info { background: rgba(59,130,246,0.9); color: #fff; }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .header { left: 0; }
+  .main { margin-left: 0; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">A</div>
+    <div>
+      <h1>Aegis</h1>
+      <span>API Gateway v1.0.0</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Monitor</div>
+    <div class="nav-item active" data-page="overview">
+      <span class="icon">📊</span> Overview
+    </div>
+    <div class="nav-item" data-page="metrics">
+      <span class="icon">📈</span> Metrics
+    </div>
+    <div class="nav-section">Management</div>
+    <div class="nav-item" data-page="routes">
+      <span class="icon">🛤️</span> Routes
+      <span class="badge">4</span>
+    </div>
+    <div class="nav-item" data-page="upstreams">
+      <span class="icon">🖥️</span> Upstreams
+      <span class="badge">3</span>
+    </div>
+    <div class="nav-item" data-page="circuit">
+      <span class="icon">⚡</span> Circuit Breakers
+    </div>
+    <div class="nav-section">Security</div>
+    <div class="nav-item" data-page="ratelimit">
+      <span class="icon">🚦</span> Rate Limiting
+    </div>
+    <div class="nav-item" data-page="auth">
+      <span class="icon">🔐</span> Auth
+    </div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" data-page="settings">
+      <span class="icon">⚙️</span> Settings
+    </div>
+  </nav>
+</aside>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <h2 id="page-title">Overview</h2>
+  </div>
+  <div class="header-right">
+    <span class="header-stat">Uptime: <strong id="uptime">2d 14h 32m</strong></span>
+    <span class="header-stat">Port: <strong>:8080</strong></span>
+    <div class="status-badge running">
+      <span class="status-dot"></span>
+      Running
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- Overview Page -->
+  <div class="page active" id="page-overview">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="label">Requests / sec</div>
+        <div class="value">1,247</div>
+        <div class="trend up">▲ 12.3% from last hour</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Avg Latency</div>
+        <div class="value">12.4<span style="font-size:16px;color:var(--text-secondary)">ms</span></div>
+        <div class="trend down">▼ 3.1% from last hour</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Total Requests</div>
+        <div class="value">1.2M</div>
+        <div class="trend up">▲ 8.7% from yesterday</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">In Flight</div>
+        <div class="value">23</div>
+        <div class="trend" style="color:var(--text-secondary)">stable</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Request Rate (Last 24h)</h3>
+          <span style="font-size:12px;color:var(--text-muted)">req/s</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-container">
+            <div class="chart-bar" style="height:30%"></div>
+            <div class="chart-bar" style="height:25%"></div>
+            <div class="chart-bar" style="height:20%"></div>
+            <div class="chart-bar" style="height:15%"></div>
+            <div class="chart-bar" style="height:12%"></div>
+            <div class="chart-bar" style="height:18%"></div>
+            <div class="chart-bar" style="height:35%"></div>
+            <div class="chart-bar" style="height:55%"></div>
+            <div class="chart-bar" style="height:70%"></div>
+            <div class="chart-bar" style="height:85%"></div>
+            <div class="chart-bar" style="height:90%"></div>
+            <div class="chart-bar" style="height:95%"></div>
+            <div class="chart-bar" style="height:100%"></div>
+            <div class="chart-bar" style="height:92%"></div>
+            <div class="chart-bar" style="height:88%"></div>
+            <div class="chart-bar" style="height:75%"></div>
+            <div class="chart-bar" style="height:82%"></div>
+            <div class="chart-bar" style="height:90%"></div>
+            <div class="chart-bar" style="height:95%"></div>
+            <div class="chart-bar" style="height:88%"></div>
+            <div class="chart-bar" style="height:72%"></div>
+            <div class="chart-bar" style="height:60%"></div>
+            <div class="chart-bar" style="height:45%"></div>
+            <div class="chart-bar" style="height:38%"></div>
+          </div>
+          <div class="chart-labels">
+            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>Now</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Status Codes</h3>
+        </div>
+        <div class="panel-body">
+          <div class="donut-container" style="flex-direction:column;align-items:center;">
+            <div class="donut" style="background:conic-gradient(var(--success) 0% 92%, var(--warning) 92% 97%, var(--danger) 97% 100%);">
+              <div class="donut-center" style="width:60px;height:60px;background:var(--bg-secondary);border-radius:50%;">
+                <div class="value" style="margin-top:14px;">1.2M</div>
+              </div>
+            </div>
+            <div class="donut-legend" style="flex-direction:row;gap:16px;margin-top:12px;">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div> 2xx 92%</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div> 4xx 5%</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div> 5xx 3%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Upstream Health</h3>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Address</th><th>Status</th><th>Latency</th><th>Weight</th><th>Requests</th></tr>
+            <tr>
+              <td><code>http://localhost:9001</code></td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Healthy</span></td>
+              <td>8.5ms</td><td>100</td><td>412,580</td>
+            </tr>
+            <tr>
+              <td><code>http://localhost:9002</code></td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Healthy</span></td>
+              <td>12.1ms</td><td>100</td><td>408,220</td>
+            </tr>
+            <tr>
+              <td><code>http://localhost:9003</code></td>
+              <td><span class="status-indicator"><span class="dot dot-red"></span> Down</span></td>
+              <td>-</td><td>100</td><td>0</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Routes Page -->
+  <div class="page" id="page-routes">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Route Configuration</h3>
+        <button class="btn btn-primary" onclick="showModal('addRouteModal')">+ Add Route</button>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Path</th><th>Method</th><th>Match Type</th><th>Balancer</th><th>Rate Limit</th><th>Circuit Breaker</th><th>Upstreams</th><th>Actions</th></tr>
+            <tr>
+              <td><code>/api/users</code></td>
+              <td><span class="tag tag-get">GET</span></td>
+              <td><span class="tag tag-exact">exact</span></td>
+              <td>Round Robin</td>
+              <td>100 req/s</td>
+              <td><span class="cb-state cb-closed">Closed</span></td>
+              <td>1</td>
+              <td><button class="btn btn-secondary btn-sm">Edit</button> <button class="btn btn-danger btn-sm">Delete</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/v1/user</code></td>
+              <td><span class="tag tag-get">GET</span></td>
+              <td><span class="tag tag-exact">exact</span></td>
+              <td>Weighted RR</td>
+              <td>100 req/s</td>
+              <td>-</td>
+              <td>1</td>
+              <td><button class="btn btn-secondary btn-sm">Edit</button> <button class="btn btn-danger btn-sm">Delete</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/files/*</code></td>
+              <td><span class="tag tag-get">GET</span></td>
+              <td><span class="tag tag-prefix">prefix</span></td>
+              <td>Random</td>
+              <td>-</td>
+              <td>-</td>
+              <td>1</td>
+              <td><button class="btn btn-secondary btn-sm">Edit</button> <button class="btn btn-danger btn-sm">Delete</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/users/{id}</code></td>
+              <td><span class="tag tag-get">GET</span></td>
+              <td><span class="tag tag-regex">regex</span></td>
+              <td>Consistent Hash</td>
+              <td>50 req/s (Redis)</td>
+              <td><span class="cb-state cb-closed">Closed</span></td>
+              <td>1</td>
+              <td><button class="btn btn-secondary btn-sm">Edit</button> <button class="btn btn-danger btn-sm">Delete</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upstreams Page -->
+  <div class="page" id="page-upstreams">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Upstream Servers</h3>
+        <button class="btn btn-primary" onclick="showToast('Service registered via etcd', 'success')">+ Register</button>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Address</th><th>Service</th><th>Status</th><th>Latency</th><th>Weight</th><th>Connections</th><th>Actions</th></tr>
+            <tr>
+              <td><code>http://localhost:9001</code></td>
+              <td>user-service</td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Healthy</span></td>
+              <td>8.5ms</td><td>100</td><td>12</td>
+              <td><button class="btn btn-danger btn-sm">Deregister</button></td>
+            </tr>
+            <tr>
+              <td><code>http://localhost:9002</code></td>
+              <td>file-service</td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Healthy</span></td>
+              <td>12.1ms</td><td>100</td><td>8</td>
+              <td><button class="btn btn-danger btn-sm">Deregister</button></td>
+            </tr>
+            <tr>
+              <td><code>http://localhost:9003</code></td>
+              <td>user-service</td>
+              <td><span class="status-indicator"><span class="dot dot-red"></span> Down</span></td>
+              <td>-</td><td>100</td><td>0</td>
+              <td><button class="btn btn-danger btn-sm">Deregister</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Service Discovery (etcd)</h3>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Key</th><th>Service</th><th>Address</th><th>TTL</th><th>Last Heartbeat</th></tr>
+            <tr>
+              <td><code>/services/user-service/9001</code></td>
+              <td>user-service</td>
+              <td>http://localhost:9001</td>
+              <td>10s</td>
+              <td>2s ago</td>
+            </tr>
+            <tr>
+              <td><code>/services/file-service/9002</code></td>
+              <td>file-service</td>
+              <td>http://localhost:9002</td>
+              <td>10s</td>
+              <td>1s ago</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Circuit Breakers Page -->
+  <div class="page" id="page-circuit">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="label">Total Breakers</div>
+        <div class="value">4</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Closed</div>
+        <div class="value" style="color:var(--success)">2</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Open</div>
+        <div class="value" style="color:var(--danger)">1</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Half-Open</div>
+        <div class="value" style="color:var(--warning)">1</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Circuit Breaker States</h3>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Route</th><th>State</th><th>Error Rate</th><th>Min Requests</th><th>Window</th><th>Recovery</th><th>Actions</th></tr>
+            <tr>
+              <td><code>/api/users</code></td>
+              <td><span class="cb-state cb-closed">● Closed</span></td>
+              <td>2.1%</td><td>10</td><td>60s</td><td>30s</td>
+              <td><button class="btn btn-secondary btn-sm">Reset</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/users/{id}</code></td>
+              <td><span class="cb-state cb-closed">● Closed</span></td>
+              <td>1.8%</td><td>20</td><td>30s</td><td>15s</td>
+              <td><button class="btn btn-secondary btn-sm">Reset</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/orders</code></td>
+              <td><span class="cb-state cb-open">● Open</span></td>
+              <td>67.3%</td><td>10</td><td>60s</td><td>30s</td>
+              <td><button class="btn btn-secondary btn-sm">Reset</button></td>
+            </tr>
+            <tr>
+              <td><code>/api/payments</code></td>
+              <td><span class="cb-state cb-half-open">● Half-Open</span></td>
+              <td>45.2%</td><td>10</td><td>60s</td><td>30s</td>
+              <td><button class="btn btn-secondary btn-sm">Reset</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>State Machine</h3></div>
+      <div class="panel-body" style="display:flex;align-items:center;justify-content:center;gap:40px;padding:40px;">
+        <div style="text-align:center;">
+          <div class="cb-state cb-closed" style="font-size:16px;padding:16px 24px;">Closed</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Normal operation</div>
+        </div>
+        <div style="font-size:24px;color:var(--text-muted);">→</div>
+        <div style="text-align:center;">
+          <div class="cb-state cb-open" style="font-size:16px;padding:16px 24px;">Open</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Rejecting requests</div>
+        </div>
+        <div style="font-size:24px;color:var(--text-muted);">→</div>
+        <div style="text-align:center;">
+          <div class="cb-state cb-half-open" style="font-size:16px;padding:16px 24px;">Half-Open</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Testing recovery</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rate Limiting Page -->
+  <div class="page" id="page-ratelimit">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="label">Total Rules</div>
+        <div class="value">3</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Requests Limited</div>
+        <div class="value">1,847</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Limit Rate</div>
+        <div class="value">0.15<span style="font-size:16px;color:var(--text-secondary)">%</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Rate Limit Rules</h3>
+      </div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Route</th><th>Type</th><th>Rate</th><th>Burst</th><th>Hits</th><th>Rejected</th><th>Status</th></tr>
+            <tr>
+              <td><code>/api/users</code></td>
+              <td>Token Bucket</td>
+              <td>100/s</td><td>200</td>
+              <td>1,247,832</td><td>892</td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Active</span></td>
+            </tr>
+            <tr>
+              <td><code>/api/v1/user</code></td>
+              <td>Token Bucket</td>
+              <td>100/s</td><td>200</td>
+              <td>523,110</td><td>412</td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Active</span></td>
+            </tr>
+            <tr>
+              <td><code>/api/users/{id}</code></td>
+              <td>Redis Sliding Window</td>
+              <td>50/s</td><td>100</td>
+              <td>312,445</td><td>543</td>
+              <td><span class="status-indicator"><span class="dot dot-green"></span> Active</span></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Page -->
+  <div class="page" id="page-auth">
+    <div class="panel">
+      <div class="panel-header"><h3>JWT Configuration</h3></div>
+      <div class="panel-body">
+        <div class="form-group" style="max-width:400px;">
+          <label>Secret Key</label>
+          <input type="password" value="your-secret-key-change-in-production" readonly>
+        </div>
+        <div class="form-group" style="max-width:400px;margin-top:16px;">
+          <label>Token Expiration</label>
+          <input type="text" value="3600 seconds (1 hour)" readonly>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Whitelist Paths</h3></div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table>
+            <tr><th>Pattern</th><th>Type</th><th>Description</th></tr>
+            <tr><td><code>/health</code></td><td>Exact</td><td>Health check endpoint</td></tr>
+            <tr><td><code>/metrics</code></td><td>Exact</td><td>Prometheus metrics</td></tr>
+            <tr><td><code>/api/public/*</code></td><td>Wildcard</td><td>Public API endpoints</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics Page -->
+  <div class="page" id="page-metrics">
+    <div class="panel">
+      <div class="panel-header"><h3>Request Rate</h3></div>
+      <div class="panel-body">
+        <div class="chart-container" style="height:160px;">
+          <div class="chart-bar" style="height:40%"></div>
+          <div class="chart-bar" style="height:35%"></div>
+          <div class="chart-bar" style="height:30%"></div>
+          <div class="chart-bar" style="height:28%"></div>
+          <div class="chart-bar" style="height:25%"></div>
+          <div class="chart-bar" style="height:32%"></div>
+          <div class="chart-bar" style="height:45%"></div>
+          <div class="chart-bar" style="height:60%"></div>
+          <div class="chart-bar" style="height:75%"></div>
+          <div class="chart-bar" style="height:88%"></div>
+          <div class="chart-bar" style="height:95%"></div>
+          <div class="chart-bar" style="height:100%"></div>
+          <div class="chart-bar" style="height:98%"></div>
+          <div class="chart-bar" style="height:92%"></div>
+          <div class="chart-bar" style="height:85%"></div>
+          <div class="chart-bar" style="height:78%"></div>
+          <div class="chart-bar" style="height:82%"></div>
+          <div class="chart-bar" style="height:90%"></div>
+          <div class="chart-bar" style="height:96%"></div>
+          <div class="chart-bar" style="height:88%"></div>
+          <div class="chart-bar" style="height:72%"></div>
+          <div class="chart-bar" style="height:58%"></div>
+          <div class="chart-bar" style="height:42%"></div>
+          <div class="chart-bar" style="height:35%"></div>
+        </div>
+        <div class="chart-labels"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>Now</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="panel">
+        <div class="panel-header"><h3>Latency Distribution</h3></div>
+        <div class="panel-body">
+          <div class="chart-container" style="height:140px;">
+            <div class="chart-bar" style="height:5%;background:var(--success)"></div>
+            <div class="chart-bar" style="height:15%;background:var(--success)"></div>
+            <div class="chart-bar" style="height:35%;background:var(--success)"></div>
+            <div class="chart-bar" style="height:65%;background:var(--success)"></div>
+            <div class="chart-bar" style="height:85%;background:var(--accent)"></div>
+            <div class="chart-bar" style="height:100%;background:var(--accent)"></div>
+            <div class="chart-bar" style="height:75%;background:var(--warning)"></div>
+            <div class="chart-bar" style="height:40%;background:var(--warning)"></div>
+            <div class="chart-bar" style="height:18%;background:var(--danger)"></div>
+            <div class="chart-bar" style="height:5%;background:var(--danger)"></div>
+          </div>
+          <div class="chart-labels"><span>1ms</span><span>10ms</span><span>50ms</span><span>100ms</span><span>500ms</span><span>1s</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><h3>Prometheus Endpoints</h3></div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;">
+              <code style="font-size:12px;">apigateway_http_requests_total</code>
+              <span class="tag tag-get">counter</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;">
+              <code style="font-size:12px;">apigateway_http_request_duration_seconds</code>
+              <span class="tag tag-post">histogram</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;">
+              <code style="font-size:12px;">apigateway_http_requests_in_flight</code>
+              <span class="tag tag-exact">gauge</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;">
+              <code style="font-size:12px;">apigateway_upstream_latency_seconds</code>
+              <span class="tag tag-post">histogram</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;">
+              <code style="font-size:12px;">apigateway_circuit_breaker_state</code>
+              <span class="tag tag-exact">gauge</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Page -->
+  <div class="page" id="page-settings">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="panel">
+        <div class="panel-header"><h3>Server</h3></div>
+        <div class="panel-body">
+          <div class="form-group"><label>Port</label><input type="text" value="8080"></div>
+          <div class="form-group" style="margin-top:12px;"><label>Read Timeout</label><input type="text" value="30s"></div>
+          <div class="form-group" style="margin-top:12px;"><label>Write Timeout</label><input type="text" value="30s"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>etcd</h3></div>
+        <div class="panel-body">
+          <div class="form-group"><label>Endpoints</label><input type="text" value="localhost:2379"></div>
+          <div class="form-group" style="margin-top:12px;"><label>Prefix</label><input type="text" value="/services"></div>
+          <div class="form-group" style="margin-top:12px;"><label>Timeout</label><input type="text" value="5s"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Redis</h3></div>
+        <div class="panel-body">
+          <div class="form-group"><label>Address</label><input type="text" value="localhost:6379"></div>
+          <div class="form-group" style="margin-top:12px;"><label>DB</label><input type="text" value="0"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Logging</h3></div>
+        <div class="panel-body">
+          <div class="form-group"><label>Level</label>
+            <select><option>debug</option><option selected>info</option><option>warn</option><option>error</option></select>
+          </div>
+          <div class="form-group" style="margin-top:12px;"><label>Output</label><input type="text" value="stdout + logs/apigateway.log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Add Route Modal -->
+<div class="modal-overlay" id="addRouteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Route</h3>
+      <button class="modal-close" onclick="hideModal('addRouteModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Path</label>
+        <input type="text" placeholder="/api/your-endpoint">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Method</label>
+          <select>
+            <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option><option>PATCH</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Match Type</label>
+          <select>
+            <option>exact</option><option>prefix</option><option>regex</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Balancer</label>
+          <select>
+            <option>round_robin</option><option>random</option><option>weighted_round_robin</option><option>consistent_hash</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hash Key (for consistent_hash)</label>
+          <input type="text" placeholder="header:X-User-ID">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Upstream Address</label>
+        <input type="text" placeholder="http://localhost:9001">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Rate Limit (req/s, 0 = disabled)</label>
+          <input type="number" value="0">
+        </div>
+        <div class="form-group">
+          <label>Circuit Breaker Threshold</label>
+          <input type="number" value="50" placeholder="%">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="hideModal('addRouteModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="hideModal('addRouteModal'); showToast('Route added successfully', 'success')">Add Route</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// Navigation
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.dataset.page;
+
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+
+    // Update page
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+
+    // Update title
+    const titles = {
+      overview: 'Overview', routes: 'Routes', upstreams: 'Upstreams',
+      circuit: 'Circuit Breakers', ratelimit: 'Rate Limiting',
+      auth: 'Authentication', metrics: 'Metrics', settings: 'Settings'
+    };
+    document.getElementById('page-title').textContent = titles[page] || page;
+  });
+});
+
+// Modal
+function showModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function hideModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+});
+
+// Toast
+function showToast(message, type) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  toast.innerHTML = '<span>' + (icons[type] || '') + '</span> ' + message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'all 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Uptime counter
+let uptimeSeconds = 225120;
+setInterval(() => {
+  uptimeSeconds++;
+  const d = Math.floor(uptimeSeconds / 86400);
+  const h = Math.floor((uptimeSeconds % 86400) / 3600);
+  const m = Math.floor((uptimeSeconds % 3600) / 60);
+  const s = uptimeSeconds % 60;
+  document.getElementById('uptime').textContent = d + 'd ' + h + 'h ' + m + 'm ' + s + 's';
+}, 1000);
+</script>
+
+</body>
+</html>
