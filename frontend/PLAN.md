@@ -1,143 +1,218 @@
-# Aegis Frontend - Development Plan
+# Aegis Frontend — Development Plan
 
-## Tech Stack
+## Current Status
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Framework | Vue 3 | 3.5+ |
-| Build Tool | Vite | 6.x |
-| Language | TypeScript | 5.x |
-| State Management | Pinia | 3.x |
-| Router | Vue Router | 4.x |
-| HTTP Client | Axios | 1.x |
-| UI Library | Element Plus | 2.x |
-| Charts | ECharts + vue-echarts | 5.x |
-| CSS | CSS Variables + Scoped Styles |
+| Layer | Status | Detail |
+|-------|--------|--------|
+| API client | ✅ Done | Axios + interceptors, 5 endpoint files |
+| Stores | ✅ Done | 5 stores wired to API, loading states |
+| Layout | ✅ Done | Sidebar + Header, router-aware |
+| Views | ❌ Static mockups | 8 views, all hardcoded ref() data, zero store integration |
+| Common components | ❌ Missing | No shared table/modal/form/button |
+| Composables | ❌ Missing | No reuse layer |
+| Charts | ❌ Missing | No ECharts integration |
 
-## Architecture
+**Core problem:** The data layer (API + stores) is complete, but views are wireframes that don't use it.
 
-### Component Architecture (Atomic Design)
+## Backend API Gap
 
-```
-atoms:     ElButton, ElTag, ElBadge, StatusDot, MetricValue
-molecules: MetricCard, RouteTableRow, UpstreamCard, CircuitStateBadge
-organisms: RouteTable, UpstreamList, CircuitBreakerPanel, MetricsChart
-pages:     DashboardView, RoutesView, UpstreamsView, ...
-```
+Current backend only exposes `/metrics` (Prometheus) and `/health`. The frontend API layer targets admin endpoints (`/api/routes`, `/api/upstreams`, etc.) that **do not exist yet**. Strategy:
 
-### State Management (Pinia Stores)
+- Phase 1-2: Build frontend with **mock API fallback** — views call stores, stores call API, but if API fails, show graceful empty state
+- Phase 3+: Backend admin API can be added independently; frontend is ready to consume it
 
-```
-stores/
-├── routes.ts       # Route CRUD, filtering, sorting
-├── upstreams.ts    # Upstream health, registration
-├── metrics.ts      # Prometheus metrics, QPS, latency
-├── circuit.ts      # Circuit breaker states
-├── ratelimit.ts    # Rate limit rules
-├── auth.ts         # JWT token, user info
-└── app.ts          # Global app state (sidebar, theme)
-```
+## Phase 1: Shared Components & Composables
 
-### API Layer
+Extract reusable pieces from duplicated view code.
+
+### 1.1 Common Components
 
 ```
-api/
-├── index.ts        # Axios instance, interceptors, error handling
-├── routes.ts       # GET/POST/PUT/DELETE /api/routes
-├── upstreams.ts    # GET/POST/DELETE /api/upstreams
-├── metrics.ts      # GET /api/metrics, /api/metrics/summary
-├── circuit.ts      # GET/PUT /api/circuit-breakers
-├── ratelimit.ts    # GET/PUT /api/rate-limits
-└── auth.ts         # POST /api/auth/login, /api/auth/refresh
+src/components/common/
+├── DataTable.vue       # Generic table with header slot, row slot, loading, empty state
+├── StatusDot.vue       # Animated green/red/yellow dot
+├── StateTag.vue        # Colored tag (CLOSED/OPEN/HALF-OPEN, GET/POST, etc.)
+├── MetricCard.vue      # Label + value + trend
+├── ConfirmDialog.vue   # Simple confirm/cancel modal
+└── PageHeader.vue      # Title + action button slot
 ```
 
-### Routing Strategy
+**DataTable.vue** — the most impactful extraction. All 6 table views share identical `<table>` markup with `<thead>`/`<tbody>`, border styles, and loading/empty patterns. One component with `<slot name="row">` eliminates ~200 lines of duplication.
 
-- Lazy loading for all views
-- Auth guard: redirect to /login if no token
-- Route meta: title, requiresAuth
-
-## Project Structure
-
+**Props:**
 ```
-frontend/
-├── src/
-│   ├── api/              # API service layer
-│   ├── assets/           # Static assets, global styles
-│   │   └── styles/       # CSS variables, theme
-│   ├── components/       # Reusable components
-│   │   ├── common/       # StatusDot, MetricCard, etc.
-│   │   ├── layout/       # Sidebar, Header
-│   │   └── charts/       # ECharts wrappers
-│   ├── composables/      # Vue composables
-│   ├── layouts/          # MainLayout
-│   ├── router/           # Vue Router config
-│   ├── stores/           # Pinia stores
-│   ├── types/            # TypeScript interfaces
-│   └── views/            # Page components
-│       ├── dashboard/    # Overview dashboard
-│       ├── routes/       # Route management
-│       ├── upstreams/    # Upstream management
-│       ├── circuit/      # Circuit breaker monitoring
-│       ├── ratelimit/    # Rate limit config
-│       ├── auth/         # Login page
-│       ├── metrics/      # Metrics visualization
-│       └── settings/     # System settings
-├── index.html
-├── vite.config.ts
-├── tsconfig.json
-└── package.json
+DataTable: { loading: boolean, emptyText: string }
+  slot #headers — <th> elements
+  slot #row="{ item }" — row template
+  slot #empty — empty state
 ```
 
-## Development Phases
+### 1.2 Composables
 
-### Phase 1: Foundation (Current)
-- [x] Project scaffold (Vue 3 + Vite + TS)
-- [x] Install dependencies
-- [x] Router with lazy loading
-- [x] Pinia stores skeleton
-- [x] Axios API layer
-- [x] TypeScript types
-- [x] MainLayout (Sidebar + Header)
-- [x] CSS variables dark theme
-
-### Phase 2: Core Pages
-- [ ] Dashboard overview (metric cards, charts)
-- [ ] Routes page (table, CRUD modal)
-- [ ] Upstreams page (health status, register)
-- [ ] Circuit Breakers page (state visualization)
-
-### Phase 3: Advanced Features
-- [ ] Metrics page (ECharts graphs)
-- [ ] Rate Limiting page
-- [ ] Auth page (JWT login)
-- [ ] Settings page
-
-### Phase 4: Polish
-- [ ] Responsive design
-- [ ] Error handling & loading states
-- [ ] Real-time data polling
-- [ ] Unit tests
-
-## Design Tokens
-
-```css
---bg-primary: #0f1117
---bg-secondary: #1a1d27
---bg-tertiary: #242736
---border: #2e3148
---text-primary: #e4e6f0
---text-secondary: #8b8fa3
---accent: #3b82f6
---success: #22c55e
---warning: #f59e0b
---danger: #ef4444
+```
+src/composables/
+├── usePolling.ts       # setInterval with auto-cleanup, configurable interval
+└── useConfirm.ts       # Confirm dialog state management
 ```
 
-## Git Workflow
+**usePolling(fn, interval)** — wraps `onMounted`/`onUnmounted` with `setInterval`. Every dashboard-style view needs periodic refresh. Returns `{ start, stop }`.
 
-Each phase is committed separately:
-1. Foundation → `feat(frontend): project scaffold and core infrastructure`
-2. Core Pages → `feat(frontend): dashboard, routes, upstreams pages`
-3. Advanced → `feat(frontend): metrics, ratelimit, auth, settings`
-4. Polish → `refactor(frontend): responsive design and error handling`
+### 1.3 Commit
+`feat(frontend): extract shared components and composables`
+
+---
+
+## Phase 2: Wire Views to Stores (Core Pages)
+
+Replace hardcoded `ref()` data with store calls. Each view becomes: `onMounted → store.fetchX()` + template reads from store.
+
+### 2.1 LoginView → authStore
+
+- Call `authStore.login(username, password)`
+- On success: `router.push('/')`
+- On error: show error message
+- Wire auth guard in router to check `authStore.isAuthenticated`
+
+### 2.2 DashboardView → metricsStore + upstreamsStore
+
+- `onMounted`: call `metricsStore.fetchSummary()` + `upstreamsStore.fetchUpstreams()`
+- Metric cards read from `metricsStore.summary` (qps, avg_latency, total_requests, in_flight)
+- Upstream health table reads from `upstreamsStore.upstreams`
+- Add `usePolling(5000)` for auto-refresh every 5s
+
+### 2.3 RoutesView → routesStore
+
+- `onMounted`: call `routesStore.fetchRoutes()`
+- Table reads from `routesStore.routes`
+- Delete button calls `routesStore.removeRoute(path)` with confirm dialog
+- Add Route button opens a form (can be a simple dialog or inline form initially)
+
+### 2.4 UpstreamsView → upstreamsStore
+
+- `onMounted`: call `upstreamsStore.fetchUpstreams()`
+- Table reads from `upstreamsStore.upstreams`
+- Deregister button calls `upstreamsStore.deregister(service, address)` with confirm
+- Register button opens dialog: service name, address, weight fields
+
+### 2.5 Commit
+`feat(frontend): wire core views to stores — login, dashboard, routes, upstreams`
+
+---
+
+## Phase 3: Wire Views to Stores (Advanced Pages)
+
+### 3.1 CircuitView — needs new store + API
+
+Current: no circuit store or API file. Create:
+
+```
+src/stores/circuit.ts    # useCircuitStore — fetchBreakers(), resetBreaker(route)
+src/api/circuit.ts       # GET /api/circuit-breakers, PUT /api/circuit-breakers/:route/reset
+```
+
+- Table reads from store
+- Reset button calls `store.resetBreaker(route)`
+- State machine diagram stays as-is (static visualization, no API needed)
+
+### 3.2 RateLimitView — needs new store + API
+
+Current: no ratelimit store or API file. Create:
+
+```
+src/stores/ratelimit.ts  # useRateLimitStore — fetchLimits(), addLimit(), removeLimit()
+src/api/ratelimit.ts     # GET/POST/DELETE /api/rate-limits
+```
+
+- Table reads from store
+- Add/Delete buttons wired to store actions
+
+### 3.3 MetricsView — metricsStore + ECharts
+
+- Replace hardcoded top routes with real data from `metricsStore`
+- Status code distribution: parse from `/metrics` raw Prometheus text, or add a backend endpoint
+- Install `echarts` + `vue-echarts` (already in package.json)
+
+Create chart components:
+```
+src/components/charts/
+├── QpsChart.vue          # Line chart — requests/sec over time
+├── LatencyChart.vue      # Line chart — avg/p99 latency
+└── StatusCodeChart.vue   # Pie/bar chart — 2xx/4xx/5xx distribution
+```
+
+- QpsChart and LatencyChart need **time-series data** — currently the backend only exposes instantaneous metrics. Two options:
+  - **Option A (simple):** Frontend polls every 2s, accumulates last N data points in memory, renders line chart
+  - **Option B (proper):** Backend exposes `/api/metrics/history` with time-bucketed data
+  - **Recommendation:** Start with Option A (pure frontend accumulation), upgrade to Option B later
+
+### 3.4 SettingsView — needs new API
+
+```
+src/api/settings.ts      # GET /api/settings, PUT /api/settings
+src/stores/settings.ts   # useSettingsStore
+```
+
+- Currently read-only display; wire to `settingsStore.fetchSettings()`
+- Edit mode toggle with save/cancel (future enhancement)
+
+### 3.5 Commit
+`feat(frontend): wire advanced views — circuit, ratelimit, metrics charts, settings`
+
+---
+
+## Phase 4: Polish & UX
+
+### 4.1 Loading & Error States
+
+- Every view shows skeleton/spinner during `store.loading`
+- API errors show toast notification (use Element Plus `ElMessage`)
+- Empty states with icon + message when data is empty
+
+### 4.2 Responsive Design
+
+- Sidebar collapses to icons on < 768px
+- Tables scroll horizontally on mobile
+- Metric cards stack vertically on small screens
+
+### 4.3 Real-time Updates
+
+- Dashboard: polling every 5s via `usePolling`
+- Metrics charts: polling every 2s, accumulate data points
+- Circuit/Routes: manual refresh button (no polling — these change infrequently)
+
+### 4.4 Header Enhancements
+
+- Fetch real server status from `/health` endpoint
+- Show actual port from config (if settings API exists)
+- Logout button that calls `authStore.logout()` + redirects to `/login`
+
+### 4.5 Commit
+`refactor(frontend): loading states, responsive design, real-time polling`
+
+---
+
+## Execution Order
+
+```
+Phase 1 → Phase 2 → Phase 3 → Phase 4
+  │           │           │           │
+  │           │           │           └─ responsive, polish, UX
+  │           │           └─ circuit/ratelimit stores, ECharts, settings
+  │           └─ wire 4 core views to existing stores
+  └─ extract DataTable, StatusDot, composables
+```
+
+Each phase is one git commit. Estimated scope:
+
+| Phase | Files changed | New files | Key deliverable |
+|-------|--------------|-----------|-----------------|
+| 1 | 0 | 8 | DataTable, StatusDot, StateTag, MetricCard, ConfirmDialog, PageHeader, usePolling, useConfirm |
+| 2 | 4 views + 1 store | 0 | All core views show real data |
+| 3 | 2 views | 6 | circuit/ratelimit stores+API, ECharts, settings |
+| 4 | 8+ views | 0 | Loading, responsive, polling, polish |
+
+## Notes
+
+- Element Plus is in `package.json` but not yet imported in `main.ts`. Add `import ElementPlus from 'element-plus'` + `app.use(ElementPlus)` in Phase 1.
+- The `src/components/common/` and `src/components/charts/` directories need to be created.
+- Sidebar badges (route count, upstream count) should read from stores, not hardcoded.
